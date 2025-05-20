@@ -20,7 +20,7 @@ class CartController extends Controller
         $cart = Session::get('cart', []);
         $products = [];
         $total = 0;
-        
+
         foreach ($cart as $id => $details) {
             $response = Http::get("{$this->apiUrl}/products/{$id}");
             if ($response->successful()) {
@@ -30,7 +30,7 @@ class CartController extends Controller
                 $total += $product['price'] * $details['quantity'];
             }
         }
-        
+
         return view('cart.index', compact('products', 'total'));
     }
 
@@ -38,20 +38,20 @@ class CartController extends Controller
     {
         $id = $request->id;
         $quantity = $request->quantity ?? 1;
-        
+
         // Check product existence and stock
         $response = Http::get("{$this->apiUrl}/products/{$id}");
         if (!$response->successful()) {
             return back()->with('error', 'Product not found');
         }
-        
+
         $product = $response->json();
         if ($product['stock'] < $quantity) {
             return back()->with('error', 'Not enough stock available');
         }
-        
+
         $cart = Session::get('cart', []);
-        
+
         if (isset($cart[$id])) {
             $cart[$id]['quantity'] += $quantity;
         } else {
@@ -59,7 +59,7 @@ class CartController extends Controller
                 'quantity' => $quantity
             ];
         }
-        
+
         Session::put('cart', $cart);
         return redirect()->route('cart.index')->with('success', 'Product added to cart');
     }
@@ -71,7 +71,7 @@ class CartController extends Controller
             $cart[$request->id]['quantity'] = $request->quantity;
             Session::put('cart', $cart);
         }
-        
+
         return redirect()->route('cart.index')->with('success', 'Cart updated');
     }
 
@@ -84,7 +84,7 @@ class CartController extends Controller
                 Session::put('cart', $cart);
             }
         }
-        
+
         return redirect()->route('cart.index')->with('success', 'Product removed from cart');
     }
 

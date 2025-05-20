@@ -18,19 +18,19 @@ class ProductController extends Controller
     {
         $response = Http::get("{$this->apiUrl}/products");
         $products = $response->json();
-        
+
         return view('products.index', compact('products'));
     }
 
     public function show($id)
     {
         $response = Http::get("{$this->apiUrl}/products/{$id}");
-        
+
         if ($response->successful()) {
             $product = $response->json();
             return view('products.show', compact('product'));
         }
-        
+
         return redirect()->route('products.index')->with('error', 'Product not found');
     }
 }
