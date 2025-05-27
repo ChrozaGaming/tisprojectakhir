@@ -3,9 +3,10 @@
 @section('content')
 <div class="container-fluid">
     <h1 class="h3 mb-4 text-gray-800">Sales Overview</h1>
-    
+
     <!-- Sales Overview Cards -->
     <div class="row">
+        <!-- Total Orders -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-primary shadow h-100 py-2">
                 <div class="card-body">
@@ -23,6 +24,7 @@
             </div>
         </div>
 
+        <!-- Total Revenue -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-success shadow h-100 py-2">
                 <div class="card-body">
@@ -30,7 +32,8 @@
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 Total Revenue</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">Rp {{ number_format($totalRevenue, 0, ',', '.') }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                Rp {{ number_format($totalRevenue, 0, ',', '.') }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
@@ -40,6 +43,7 @@
             </div>
         </div>
 
+        <!-- Average Order Value -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-info shadow h-100 py-2">
                 <div class="card-body">
@@ -59,6 +63,7 @@
             </div>
         </div>
 
+        <!-- Processing Orders -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-warning shadow h-100 py-2">
                 <div class="card-body">
@@ -67,7 +72,7 @@
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                 Processing Orders</div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ count(array_filter($orders, function($order) { return $order['status'] == 'processing'; })) }}
+                                {{ count(array_filter($orders, fn($o) => $o['status'] === 'processing')) }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -79,9 +84,10 @@
         </div>
     </div>
 
-    <!-- Sales Chart -->
+    <!-- Sales Chart + Leaderboard -->
     <div class="row">
-        <div class="col-xl-8 col-lg-7">
+        <!-- Monthly Revenue Line Chart -->
+        {{-- <div class="col-xl-8 col-lg-7">
             <div class="card shadow mb-4">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                     <h6 class="m-0 font-weight-bold text-primary">Monthly Revenue Overview</h6>
@@ -92,25 +98,44 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div> --}}
 
-        <!-- Top Selling Products -->
-        <div class="col-xl-4 col-lg-5">
+        <!-- Top Selling Products Leaderboard -->
+        <div class="col-12">
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Top Selling Products</h6>
+                    <h6 class="m-0 font-weight-bold text-primary">Top Selling Products (Leaderboard)</h6>
                 </div>
                 <div class="card-body">
-                    <div class="chart-pie pt-4 pb-2">
-                        <canvas id="productSalesChart"></canvas>
-                    </div>
-                    <div class="mt-4 text-center small">
+                    @php
+                        $totalUnits = array_sum(array_column($productSales, 'quantity'));
+                    @endphp
+                    <ul class="list-group list-group-flush">
                         @foreach(array_slice($productSales, 0, 5) as $index => $product)
-                            <span class="mr-2">
-                                <i class="fas fa-circle" style="color: {{ ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b'][$index % 5] }}"></i> {{ $product['product_name'] }}
-                            </span>
+                            @php
+                                $percent = $totalUnits > 0 ? round($product['quantity'] / $totalUnits * 100, 1) : 0;
+                                $badgeColors = ['primary', 'success', 'info', 'warning', 'danger'];
+                            @endphp
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="badge badge-{{ $badgeColors[$index % 5] }} badge-pill mr-2">
+                                            {{ $index + 1 }}
+                                        </span>
+                                        <strong>{{ $product['product_name'] }}</strong>
+                                    </div>
+                                    <span class="font-weight-bold">{{ $product['quantity'] }} sold</span>
+                                </div>
+                                <div class="progress mt-2" style="height: 6px;">
+                                    <div class="progress-bar bg-{{ $badgeColors[$index % 5] }}"
+                                         role="progressbar"
+                                         style="width: {{ $percent }}%;"
+                                         aria-valuenow="{{ $percent }}" aria-valuemin="0" aria-valuemax="100">
+                                    </div>
+                                </div>
+                            </li>
                         @endforeach
-                    </div>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -126,9 +151,9 @@
                 <table class="table table-bordered" width="100%" cellspacing="0">
                     <thead>
                         <tr>
-                            <th>Order ID</th>
+                            <th>Order&nbsp;ID</th>
                             <th>Product</th>
-                            <th>Quantity</th>
+                            <th>Qty</th>
                             <th>Total</th>
                             <th>Status</th>
                             <th>Date</th>
@@ -142,15 +167,19 @@
                                 <td>{{ $order['quantity'] }}</td>
                                 <td>Rp {{ number_format($order['total_price'], 0, ',', '.') }}</td>
                                 <td>
-                                    @if($order['status'] == 'completed')
-                                        <span class="badge badge-success">Completed</span>
-                                    @elseif($order['status'] == 'processing')
-                                        <span class="badge badge-primary">Processing</span>
-                                    @elseif($order['status'] == 'cancelled')
-                                        <span class="badge badge-danger">Cancelled</span>
-                                    @else
-                                        <span class="badge badge-secondary">{{ ucfirst($order['status']) }}</span>
-                                    @endif
+                                    @switch($order['status'])
+                                        @case('completed')
+                                            <span class="badge badge-success">Completed</span>
+                                            @break
+                                        @case('processing')
+                                            <span class="badge badge-primary">Processing</span>
+                                            @break
+                                        @case('cancelled')
+                                            <span class="badge badge-danger">Cancelled</span>
+                                            @break
+                                        @default
+                                            <span class="badge badge-secondary">{{ ucfirst($order['status']) }}</span>
+                                    @endswitch
                                 </td>
                                 <td>{{ date('d M Y, H:i', strtotime($order['created_at'])) }}</td>
                             </tr>
@@ -161,7 +190,7 @@
         </div>
     </div>
 
-    <!-- Top Selling Products Table -->
+    <!-- Product Sales Breakdown Table -->
     <div class="card shadow mb-4">
         <div class="card-header py-3">
             <h6 class="m-0 font-weight-bold text-primary">Product Sales Breakdown</h6>
@@ -171,11 +200,11 @@
                 <table class="table table-bordered" width="100%" cellspacing="0">
                     <thead>
                         <tr>
-                            <th>Product ID</th>
-                            <th>Product Name</th>
-                            <th>Units Sold</th>
+                            <th>Product&nbsp;ID</th>
+                            <th>Product&nbsp;Name</th>
+                            <th>Units&nbsp;Sold</th>
                             <th>Revenue</th>
-                            <th>% of Total Revenue</th>
+                            <th>% of Revenue</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -186,7 +215,7 @@
                                 <td>{{ $product['quantity'] }}</td>
                                 <td>Rp {{ number_format($product['revenue'], 0, ',', '.') }}</td>
                                 <td>
-                                    {{ $totalRevenue > 0 ? round(($product['revenue'] / $totalRevenue) * 100, 2) : 0 }}%
+                                    {{ $totalRevenue > 0 ? round($product['revenue'] / $totalRevenue * 100, 2) : 0 }}%
                                 </td>
                             </tr>
                         @endforeach
@@ -196,116 +225,57 @@
         </div>
     </div>
 </div>
-
 @endsection
 
 @section('scripts')
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // Monthly Sales Chart
-    var ctx = document.getElementById("monthlySalesChart");
-    var monthlySalesChart = new Chart(ctx, {
+    /* ---------- Monthly Revenue Line Chart ---------- */
+    const ctx = document.getElementById("monthlySalesChart");
+    new Chart(ctx, {
         type: 'line',
         data: {
             labels: [
-                @foreach($monthlySales as $month => $value) 
-                    "{{ $month }}"@if(!$loop->last),@endif
-                @endforeach
+                @foreach($monthlySales as $month => $value) "{{ $month }}"@if(!$loop->last),@endif @endforeach
             ],
             datasets: [{
                 label: "Revenue",
-                lineTension: 0.3,
-                backgroundColor: "rgba(78, 115, 223, 0.05)",
-                borderColor: "rgba(78, 115, 223, 1)",
-                pointRadius: 3,
-                pointBackgroundColor: "rgba(78, 115, 223, 1)",
-                pointBorderColor: "rgba(78, 115, 223, 1)",
-                pointHoverRadius: 3,
-                pointHoverBackgroundColor: "rgba(78, 115, 223, 1)",
-                pointHoverBorderColor: "rgba(78, 115, 223, 1)",
-                pointHitRadius: 10,
-                pointBorderWidth: 2,
                 data: [
-                    @foreach($monthlySales as $value) 
-                        {{ $value }}@if(!$loop->last),@endif
-                    @endforeach
-                ]
+                    @foreach($monthlySales as $value) {{ $value }}@if(!$loop->last),@endif @endforeach
+                ],
+                lineTension: 0.3,
+                backgroundColor: "rgba(78,115,223,0.05)",
+                borderColor: "rgba(78,115,223,1)",
+                pointRadius: 3,
+                pointBackgroundColor: "rgba(78,115,223,1)",
+                pointBorderColor: "rgba(78,115,223,1)",
+                pointHoverRadius: 3,
+                pointHoverBackgroundColor: "rgba(78,115,223,1)",
+                pointHoverBorderColor: "rgba(78,115,223,1)",
+                pointHitRadius: 10,
+                pointBorderWidth: 2
             }]
         },
         options: {
             maintainAspectRatio: false,
-            layout: {
-                padding: {
-                    left: 10,
-                    right: 25,
-                    top: 25,
-                    bottom: 0
-                }
-            },
+            layout: { padding: { left:10, right:25, top:25, bottom:0 } },
             scales: {
-                x: {
-                    grid: {
-                        display: false,
-                        drawBorder: false
-                    }
-                },
+                x: { grid: { display:false, drawBorder:false } },
                 y: {
                     ticks: {
                         beginAtZero: true,
-                        callback: function(value) {
-                            return 'Rp ' + value.toLocaleString('id-ID');
-                        }
+                        callback: val => 'Rp ' + val.toLocaleString('id-ID')
                     }
                 }
             },
             plugins: {
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
-                            return 'Revenue: Rp ' + context.parsed.y.toLocaleString('id-ID');
-                        }
+                        label: ctx => 'Revenue: Rp ' + ctx.parsed.y.toLocaleString('id-ID')
                     }
                 }
             }
-        }
-    });
-
-    // Product Sales Pie Chart
-    var ctx2 = document.getElementById("productSalesChart");
-    var productSalesChart = new Chart(ctx2, {
-        type: 'doughnut',
-        data: {
-            labels: [
-                @foreach(array_slice($productSales, 0, 5) as $product) 
-                    "{{ $product['product_name'] }}"@if(!$loop->last),@endif
-                @endforeach
-            ],
-            datasets: [{
-                data: [
-                    @foreach(array_slice($productSales, 0, 5) as $product) 
-                        {{ $product['quantity'] }}@if(!$loop->last),@endif
-                    @endforeach
-                ],
-                backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b'],
-                hoverBackgroundColor: ['#2e59d9', '#17a673', '#2c9faf', '#dda20a', '#be2617'],
-                hoverBorderColor: "rgba(234, 236, 244, 1)"
-            }]
-        },
-        options: {
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.label + ': ' + context.parsed + ' units';
-                        }
-                    }
-                }
-            },
-            cutout: '70%'
         }
     });
 </script>
